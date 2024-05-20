@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Calendar + Weather</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;900&display=swap" rel="stylesheet">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="https://www.2020timelapse.com/icons/icon-180.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="https://www.2020timelapse.com/icons/icon-167.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://www.2020timelapse.com/icons/icon-152.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://www.2020timelapse.com/icons/icon-120.png">
+
+    <!-- Favicon for other devices -->
+    <link rel="icon" type="image/png" sizes="32x32" href="https://www.2020timelapse.com/icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://www.2020timelapse.com/icons/favicon-16.png">
+
+    <!-- Splash Screen images for Apple devices -->
+    <link href="https://www.2020timelapse.com/icons/splash-2048x2732.png" sizes="2048x2732" rel="apple-touch-startup-image">
+    <link href="https://www.2020timelapse.com/icons/splash-1668x2224.png" sizes="1668x2224" rel="apple-touch-startup-image">
+
+    <!-- Meta Tags for Web App Capabilities -->
+    <meta name="apple-mobile-web-app-title" content="Moon Calendar + Weather">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            background-color: black;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -100;
+            object-fit: cover;
+            opacity: 0.25;
+        }
+
+        .content {
+            position: absolute;
+            z-index: 100;
+            text-align: center;
+        }
+
+        #moonPhase {
+            font-size: 10vw;
+            margin-bottom: 1rem;
+        }
+
+        #clock {
+            color: yellow;
+            font-size: 10vw;
+            font-weight: 900;
+        }
+
+        #date {
+            color: grey;
+            font-size: 3vw;
+            margin-top: 1rem;
+        }
+
+        #weather {
+            color: white;
+            font-size: 3vw;
+            margin-top: 1rem;
+        }
+
+        #temperature {
+            font-size: 3vw;
+        }
+
+        @media (max-width: 600px) {
+            #moonPhase {
+                font-size: 20vw;
+            }
+            #clock {
+                font-size: 15vw;
+            }
+            #date, #weather, #temperature {
+                font-size: 4vw;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <video autoplay loop muted playsinline>
+        <source src="https://www.2020timelapse.com/overlays/rain1.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <div class="content">
+        <div id="moonPhase">🌑</div>
+        <div id="clock"></div>
+        <div id="date"></div>
+        <div id="weather">
+            <span id="temperature"></span>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const amPm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0'+minutes : minutes;
+            const strTime = hours + ':' + minutes + ' ' + amPm;
+            document.getElementById('clock').textContent = strTime;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const dateString = now.toLocaleDateString('en-US', options).replace(',', '');
+            document.getElementById('date').textContent = dateString.charAt(0).toUpperCase() + dateString.slice(1);
+        }
+
+        function updateWeather() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&current_weather=true`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.current_weather) {
+                            document.getElementById('temperature').textContent = `${data.current_weather.temperature}°C`;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Failed to get weather data', error);
+                        document.getElementById('temperature').textContent = 'Weather data unavailable';
+                    });
+                }, function(error) {
+                    console.error('Geolocation error:', error);
+                    document.getElementById('temperature').textContent = 'Location access denied';
+                });
+            }
+        }
+
+        function updateMoonPhase() {
+            const now = new Date();
+            const cycle = 29.530588861; // Moon's cycle in days
+            const newMoonDate = new Date('2000-01-06T18:14:00'); // Known New Moon date
+            const diff = now - newMoonDate; // Difference in milliseconds
+            const daysSinceNewMoon = diff / 1000 / 60 / 60 / 24; // Convert to days
+            const moonPhases = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'];
+            const phaseIndex = Math.floor((daysSinceNewMoon % cycle) / (cycle / moonPhases.length));
+            document.getElementById('moonPhase').textContent = moonPhases[phaseIndex];
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+        updateWeather();
+        updateMoonPhase();
+    </script>
+
+</body>
+</html>
